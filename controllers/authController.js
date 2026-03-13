@@ -1,12 +1,11 @@
-import User from "../models/UserModel.js";
-import jwt from "jsonwebtoken";
-import axios from "axios";
-
+const User = require("../models/UserModel.js");
+const jwt = require("jsonwebtoken");
+const axios = require("axios");
 // Temporary in-memory store (Phone: OTP)
 const otpStore = {}; 
 
 // --- 1. Request OTP (Real Integration) ---
-export const requestOtp = async (req, res) => {
+const requestOtp = async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ message: "Phone number is required" });
 
@@ -21,7 +20,7 @@ export const requestOtp = async (req, res) => {
     // 3. Trigger your Termux Gateway via Railway
     await axios.post(process.env.OTP_GATEWAY_URL, {
       to: phone,
-      message: `Fixr: Your verification code is ${generatedOtp}. Do not share it.`
+      message: `Your Fixr OTP is: ${generatedOtp}`
     }, {
       headers: { "x-api-key": process.env.OTP_GATEWAY_KEY }
     });
@@ -39,7 +38,7 @@ export const requestOtp = async (req, res) => {
 };
 
 // --- 2. Verify OTP & Login/Register ---
-export const verifyOtp = async (req, res) => {
+const verifyOtp = async (req, res) => {
   const { phone, otp, fullName } = req.body;
 
   // Real OTP Check
@@ -83,7 +82,7 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
-export const getMe = async (req, res) => {
+const getMe = async (req, res) => {
   try {
     // req.user.id comes from your JWT middleware (which we will create next)
     const user = await User.findById(req.user.id).select("-otp"); 
@@ -96,7 +95,7 @@ export const getMe = async (req, res) => {
 };
 
 // --- 3. Update User Profile (PUT) ---
-export const updateProfile = async (req, res) => {
+const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
     const { type, value } = req.body; 
@@ -154,3 +153,7 @@ export const updateProfile = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+module.exports = { requestOtp, verifyOtp, getMe, updateProfile };
+
+//

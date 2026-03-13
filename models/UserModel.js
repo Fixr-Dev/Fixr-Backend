@@ -1,7 +1,12 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
+const { v4: uuidv4 } = require("uuid");
 
 const userSchema = new mongoose.Schema({
-  
+  userId: {
+    type: String,
+    required: true,
+    default: uuidv4,
+  },
   phone: { 
     type: String, 
     required: true, 
@@ -66,4 +71,6 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ location: "2dsphere" });
 
 const User = mongoose.model("User", userSchema);
-export default User;
+module.exports=User;
+
+//
