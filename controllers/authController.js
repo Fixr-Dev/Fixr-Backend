@@ -1,47 +1,68 @@
 import User from "../models/UserModel.js";
 import jwt from "jsonwebtoken";
+import axios from "axios";
 
-// --- 1. Request OTP (Pseudo) ---
+// Temporary in-memory store (Phone: OTP)
+const otpStore = {}; 
+
+// --- 1. Request OTP (Real Integration) ---
 export const requestOtp = async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ message: "Phone number is required" });
 
   try {
-    // In a real app, you'd trigger an SMS gateway here.
-    // For now, we just acknowledge the request.
+    // 1. Generate a real 4-digit OTP
+    const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    // 2. Save it to our store (expires in 5 mins)
+    otpStore[phone] = generatedOtp;
+    setTimeout(() => delete otpStore[phone], 5 * 60 * 1000);
+
+    // 3. Trigger your Termux Gateway via Railway
+    await axios.post(process.env.OTP_GATEWAY_URL, {
+      to: phone,
+      message: `Fixr: Your verification code is ${generatedOtp}. Do not share it.`
+    }, {
+      headers: { "x-api-key": process.env.OTP_GATEWAY_KEY }
+    });
+
+    console.log(`OTP ${generatedOtp} sent to ${phone}`);
+
     res.status(200).json({ 
       success: true, 
-      message: "OTP sent successfully (Use 0000)" 
+      message: "OTP sent to your phone" 
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Gateway Error:", error.response?.data || error.message);
+    res.status(500).json({ message: "Failed to send SMS. Try again later." });
   }
 };
 
 // --- 2. Verify OTP & Login/Register ---
 export const verifyOtp = async (req, res) => {
-  const { phone, otp, fullName } = req.body; // fullName only needed for new users
+  const { phone, otp, fullName } = req.body;
 
-  // Pseudo OTP Check
-  if (otp !== "0000") {
-    return res.status(400).json({ message: "Invalid OTP" });
+  // Real OTP Check
+  if (!otpStore[phone] || otpStore[phone] !== otp) {
+    return res.status(400).json({ message: "Invalid or expired OTP" });
   }
 
   try {
     let user = await User.findOne({ phone });
 
-    // If user doesn't exist, create a new one
     if (!user) {
       if (!fullName) return res.status(400).json({ message: "Full Name required for new users" });
       user = await User.create({ 
         phone, 
         fullName,
-        role: 'customer', // Default role
-        email:""
+        role: 'customer',
+        email: ""
       });
     }
 
-    // Generate JWT
+    // Clean up OTP after successful login
+    delete otpStore[phone];
+
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "30d",
     });

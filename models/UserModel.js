@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema({
+  
   phone: { 
     type: String, 
     required: true, 
@@ -44,7 +45,7 @@ const userSchema = new mongoose.Schema({
   // Geo-spatial data for "Technicians Near You" logic
   location: {
     type: { type: String, default: 'Point' },
-    coordinates: { type: [Number], default: [82.1851, 27.4099] }, // [Long, Lat]
+    coordinates: { type: [Number], default: [0.0, 0.0] }, // [Long, Lat]
     address: String,
     city: String
   },
