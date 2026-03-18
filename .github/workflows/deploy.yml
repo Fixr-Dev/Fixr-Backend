@@ -20,7 +20,6 @@ jobs:
           cd ..
           
           # Rebuild only the backend service and restart
-          docker-compose -f "docker-compose.yml" up --build -d backend
-          
+          docker-compose -f "D:\FixrServer\docker-compose.yml" --project-directory "D:\FixrServer" up --build -d backend          
           # Clean up old images to save space
           docker image prune -f
