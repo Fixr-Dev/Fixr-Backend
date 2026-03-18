@@ -7,33 +7,47 @@ const otpStore = {};
 // --- 1. Request OTP (Real Integration) ---
 const requestOtp = async (req, res) => {
   const { phone } = req.body;
-  if (!phone) return res.status(400).json({ message: "Phone number is required" });
+  
+  if (!phone) {
+    return res.status(400).json({ message: "Phone number is required" });
+  }
 
   try {
-    // 1. Generate a real 4-digit OTP
+    // 1. Generate 4-digit OTP
     const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
     
-    // 2. Save it to our store (expires in 5 mins)
+    // 2. Save to store (expires in 5 mins)
     otpStore[phone] = generatedOtp;
     setTimeout(() => delete otpStore[phone], 5 * 60 * 1000);
 
-    // 3. Trigger your Termux Gateway via Railway
-    await axios.post(process.env.OTP_GATEWAY_URL, {
-      to: phone,
-      message: `Your Fixr OTP is: ${generatedOtp}`
-    }, {
-      headers: { "x-api-key": process.env.OTP_GATEWAY_KEY }
+    const message = `Your Fixr OTP is: ${generatedOtp}`;
+
+    // 3. Trigger Local SMS Gateway
+    // We use axios.get because your working URL is a GET request with query params
+    await axios.get(`http://192.168.1.6:8080/send-sms`, {
+      params: {
+        phone: phone,
+        message: message
+      },
+      // Keep the timeout short so your backend doesn't hang if the phone disconnects
+      timeout: 5000 
     });
 
-    console.log(`OTP ${generatedOtp} sent to ${phone}`);
+    console.log(`[Success] OTP ${generatedOtp} sent to ${phone} via Local Gateway`);
 
-    res.status(200).json({ 
+    return res.status(200).json({ 
       success: true, 
       message: "OTP sent to your phone" 
     });
+
   } catch (error) {
-    console.error("Gateway Error:", error.response?.data || error.message);
-    res.status(500).json({ message: "Failed to send SMS. Try again later." });
+    console.error("Gateway Error:", error.message);
+    
+    // Fallback: If the local phone is offline/disconnected
+    return res.status(500).json({ 
+      success: false, 
+      message: "SMS Gateway is currently offline. Please try again later." 
+    });
   }
 };
 
