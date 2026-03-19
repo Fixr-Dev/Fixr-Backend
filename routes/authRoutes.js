@@ -1,4 +1,3 @@
-const technicianController = require("../controllers/technicianController");
 const express = require("express");
 const router = express.Router();
 const multer = require('multer'); // Must be imported before use

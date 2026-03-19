@@ -1,4 +1,4 @@
-const Technician = require("../models/Technician");
+const Technician = require("../models/TechnicianModel.js");
 const User = require("../models/UserModel.js");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
@@ -130,13 +130,19 @@ const updateProfile = async (req, res) => {
     switch (type) {
       case "personal_details":
         // Value expected: { fullName, email, city, profileImage }
-        const { fullName, email, city, address, profileImage } = value;
+        const { fullName, email, city, address, profileImage,language,gender } = value;
         if (fullName) {
           if (fullName.trim().length < 2) return res.status(400).json({ message: "Name too short" });
           updateData.fullName = fullName.trim();
         }
         if (email) {
           updateData.email = email.toLowerCase().trim();
+        }
+        if (gender) {
+          updateData.gender = gender.trim();
+        }
+        if (language) {
+          updateData.language = language;
         }
         if (profileImage) {
           // Basic check to ensure it's a valid URL string
