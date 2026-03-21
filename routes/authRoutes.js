@@ -5,7 +5,7 @@ const { requestOtp, verifyOtp,getTechnicianProfile, getMe, updateProfile, handle
 const { protect } = require("../middleware/authMiddleware.js");
 
 // Initialize multer
-const storage = multer.memoryStorage(); // Mandatory for MinIO/S3 buffers
+const storage = multer.memoryStorage(); // Mandatory for MinIO/S3 buffers xxxx
 const upload = multer({ storage: storage ,limits: { fileSize: 200 * 1024 * 1024 }});
 
 router.get("/me", protect, getMe);
