@@ -146,64 +146,87 @@ const getMe = async (req, res) => {
 
 // --- 3. Update User Profile (PUT) ---
 
-const updateProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { type, value } = req.body;
-    let updateData = {};
-    switch (type) {
-      case "personal_details":
-        // Value expected: { fullName, email, city, profileImage }
-        const { fullName, email, city, address,coordinates,isAvailable, profileImage,languages,gender } = value;
-        if (fullName) {
-          if (fullName.trim().length < 2) return res.status(400).json({ message: "Name too short" });
-          updateData.fullName = fullName.trim();
-        }
-        if (email) {
-          updateData.email = email.toLowerCase().trim();
-        }
-        if (gender) {
-          updateData.gender = gender.trim();
-        }
-        if (languages) {
-          updateData.languages = languages;
-        }
-        if (profileImage) {
-          // Basic check to ensure it's a valid URL string
-          updateData.profileImage = profileImage;
-        }       
-        if (isAvailable) {
-          // Basic check to ensure it's a valid URL string
-          updateData.isAvailable = isAvailable;
-        }       
-        if (city) {
-          updateData.location = {
-            ...req.user.location,
-            coordinates:coordinates,
-            address: address.trim(),
-            city: city.trim()
-          };
-        }
-        break;
-      case "availability":
-        updateData = { isAvailable: !!value };
-        break;
-      case "theme":
-        updateData = { theme: value };
-      break;
-      default:
-        return res.status(400).json({ message: "Invalid update type" });
+  const updateProfile = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { type, value } = req.body;
+      let updateData = {};
+
+      switch (type) {
+        case "personal_details":
+          // Destructure all incoming fields from value
+          const { 
+            fullName, email, city, address, 
+            coordinates, isAvailable, profileImage, 
+            languages, gender 
+          } = value;
+
+          if (fullName) {
+            if (fullName.trim().length < 2) return res.status(400).json({ message: "Name too short" });
+            updateData.fullName = fullName.trim();
+          }
+
+          if (email) {
+            updateData.email = email.toLowerCase().trim();
+          }
+
+          if (gender) {
+            updateData.gender = gender.trim();
+          }
+
+          if (languages) {
+            updateData.languages = languages;
+          }
+
+          if (profileImage) {
+            updateData.profileImage = profileImage;
+          }
+
+          if (typeof isAvailable !== 'undefined') {
+            updateData.isAvailable = isAvailable;
+          }
+
+          // Logic for Location Update
+          // Ensure coordinates are saved as [longitude, latitude] for MongoDB 2dsphere
+          if (city || address || coordinates) {
+            updateData.location = {
+              ...req.user.location, // Keep existing fields if not provided
+              type: "Point",
+              coordinates: coordinates ? [parseFloat(coordinates.longitude), parseFloat(coordinates.latitude)] : req.user.location.coordinates,
+              address: address ? address.trim() : req.user.location.address,
+              city: city ? city.trim() : req.user.location.city
+            };
+          }
+          break;
+
+        case "availability":
+          updateData = { isAvailable: !!value };
+          break;
+
+        case "theme":
+          updateData = { theme: value };
+          break;
+
+        default:
+          return res.status(400).json({ message: "Invalid update type" });
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      ).select("-otp -otpExpires");
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.status(200).json({ success: true, user: updatedUser });
+    } catch (error) {
+      console.error("Update Profile Error:", error);
+      res.status(500).json({ message: error.message });
     }
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { $set: updateData },
-      { new: true, runValidators: true }
-    ).select("-otp -otpExpires");
-    res.status(200).json({ success: true, user: updatedUser });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+  };
 
 const registerTechnician = async (req, res) => {
   try {
