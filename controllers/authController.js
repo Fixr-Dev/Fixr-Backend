@@ -66,7 +66,6 @@ const verifyOtp = async (req, res) => {
 
 // --- 3. Upload to MinIO ---
 
-
 const handleUpload = async (req, res) => {
     // 1. Check if Multer caught the file
     if (!req.file) {
