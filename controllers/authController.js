@@ -154,7 +154,7 @@ const updateProfile = async (req, res) => {
     switch (type) {
       case "personal_details":
         // Value expected: { fullName, email, city, profileImage }
-        const { fullName, email, city, address, profileImage,languages,gender } = value;
+        const { fullName, email, city, address,coordinates, profileImage,languages,gender } = value;
         if (fullName) {
           if (fullName.trim().length < 2) return res.status(400).json({ message: "Name too short" });
           updateData.fullName = fullName.trim();
@@ -175,6 +175,7 @@ const updateProfile = async (req, res) => {
         if (city) {
           updateData.location = {
             ...req.user.location,
+            coordinates:coordinates,
             address: address.trim(),
             city: city.trim()
           };
