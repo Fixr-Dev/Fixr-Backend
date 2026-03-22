@@ -119,7 +119,7 @@ const getMe = async (req, res) => {
     }
 
     // 2. Check if "technician" exists inside the role array
-    const isTech = user.role && user.role.includes("technician");
+    const isTech = user.roles && user.roles.includes("technician");
     let technicianProfile= {}
 
     let completeUser = { ...user };
