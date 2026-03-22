@@ -46,6 +46,7 @@ app.use((req, res, next) => {
 // --- ROUTES ---
 app.use('/api/auth', authRoutes);
 app.use('/api', apkUpdateRoutes);
+app.use('/api/location', locationRoutes);
 
 // Optimized Static Serving for Updates
 const updatesFolder = path.join(__dirname, 'updates');
