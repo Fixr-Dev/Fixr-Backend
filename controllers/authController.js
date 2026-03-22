@@ -205,23 +205,69 @@ const registerTechnician = async (req, res) => {
 
 const getAllTechnicians = async (req, res) => {
   try {
-    const { category, minPrice, maxPrice } = req.query;
-    let filter = { is_active: true };
+    const { lat, lng, search, radius = 30 } = req.query;
+    const pipeline = [];
 
-    if (category) filter.category = category;
-    if (minPrice || maxPrice) {
-      filter.starting_price = { 
-        $gte: minPrice || 0, 
-        $lte: maxPrice || 100000 
-      };
+    // 1. Geospatial Search (Coordinates must be [lng, lat])
+    if (lat && lng) {
+      pipeline.push({
+        $geoNear: {
+          near: { type: "Point", coordinates: [parseFloat(lng), parseFloat(lat)] },
+          distanceField: "distance",
+          maxDistance: parseInt(radius) * 1000, // KM to Meters
+          spherical: true,
+          query: { roles: "technician" } 
+        }
+      });
+    } else {
+      pipeline.push({ $match: { roles: "technician" } });
     }
 
-    const techs = await Technician.find(filter).populate({
-        path: 'userId',
-        select: 'fullName profileImage location' // Pulls common data from UserModal
+    // 2. Join with the technicians collection
+    pipeline.push({
+      $lookup: {
+        from: "technicians", 
+        localField: "_id",
+        foreignField: "user", 
+        as: "techData"
+      }
     });
-    
-    res.status(200).json(techs);
+
+    // 3. Flatten the joined array
+    pipeline.push({ 
+      $unwind: {
+        path: "$techData",
+        preserveNullAndEmptyArrays: true 
+      }
+    });
+
+    // 4. Text Search (Search name or profession)
+    if (search && search.trim() !== "") {
+      pipeline.push({
+        $match: {
+          $or: [
+            { fullName: { $regex: search, $options: "i" } },
+            { "techData.profession": { $regex: search, $options: "i" } }
+          ]
+        }
+      });
+    }
+
+    // 5. Merge all fields into the top level
+    pipeline.push({
+      $replaceRoot: { 
+        newRoot: { $mergeObjects: ["$techData", "$$ROOT"] } 
+      }
+    });
+
+    // 6. Final cleanup and sorting
+    pipeline.push({
+      $project: { techData: 0 }, // Remove the extra nested object
+      $sort: { distance: 1 }      // Nearest first
+    });
+
+    const results = await User.aggregate(pipeline);
+    res.status(200).json(results);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -229,9 +275,19 @@ const getAllTechnicians = async (req, res) => {
 
 const getTechnicianProfile = async (req, res) => {
   try {
-    const tech = await Technician.findOne({ userId: req.params.userId }).populate('userId');
-    if (!tech) return res.status(404).json({ message: "Profile not found" });
-    res.status(200).json(tech);
+    // .lean() tells Mongoose to return a plain JS object, making it faster and cleaner
+    const tech = await Technician.findOne({ userId: req.params.userId }).lean();
+    const user = await User.findOne({ userId: req.params.userId }).lean();
+
+    if (!tech || !user) {
+      return res.status(404).json({ message: "Technician profile not found" });
+    }
+
+    // Merge them: tech properties will override user properties if keys collide
+    // (e.g., both have 'createdAt', tech's version will be kept)
+    const profile = { ...user, ...tech };
+
+    res.status(200).json(profile);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
