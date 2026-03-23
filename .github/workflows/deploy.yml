@@ -21,7 +21,7 @@ jobs:
           robocopy . "D:\FixrServer\backend" /MIR /XD .git .github node_modules
           
           # Robocopy uses non-zero exit codes for success (e.g., 1 means files were copied).
-          # We force 'exit 0' so GitHub Actions doesn't think a successful copy is a "Failure".
+          # We force 'exit 0'  so GitHub Actions doesn't think a successful copy is a "Failure".
           if ($lastExitCode -le 8) { exit 0 } else { exit $lastExitCode }
         shell: powershell
 
