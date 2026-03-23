@@ -201,7 +201,7 @@ const getMe = async (req, res) => {
             const lng = parseFloat(coordinates[0]);
                     const lat = parseFloat(coordinates[1]);
 
-                    // Only update if they are valid numbers (prevents NaN crash)
+                    // Only update if they are valid numbers (prevents NaN crashss)
                     if (!isNaN(lng) && !isNaN(lat)) {
                       newLng = lng;
                       newLat = lat;
