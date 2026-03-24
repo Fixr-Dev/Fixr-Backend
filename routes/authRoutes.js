@@ -4,7 +4,7 @@ const multer = require('multer'); // Must be imported before use
 const { requestOtp, verifyOtp,getTechnicianProfile, getMe, updateProfile, handleUpload ,registerTechnician,getAllTechnicians,updateTechnician,deleteTechnicianProfile} = require("../controllers/authController.js");
 const { protect } = require("../middleware/authMiddleware.js");
 
-// Initialize multer
+// Initialize mulxter
 const storage = multer.memoryStorage(); // Mandatory for MinIO/S3 buffers xxxx
 const upload = multer({ storage: storage ,limits: { fileSize: 200 * 1024 * 1024 }});
 
