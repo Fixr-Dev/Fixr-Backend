@@ -46,19 +46,8 @@ app.use((req, res, next) => {
 
 // --- ROUTES ---
 app.use('/api/auth', authRoutes);
-app.use('/api', apkUpdateRoutes);
+app.use('/api/apk', apkUpdateRoutes);
 app.use('/api/location', locationRoutes);
-
-// Optimized Static Serving for Updates
-const updatesFolder = path.join(__dirname, 'updates');
-app.use('/updates', express.static(updatesFolder, {
-    setHeaders: (res) => {
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-    }
-}));
-
-// --- GLOBAL VIEW ROUTE ---
-// Changed from 'router.get' to 'app.get'
 app.get('/fixr-uploads/uploads/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
@@ -81,7 +70,6 @@ app.get('/fixr-uploads/uploads/:filename', async (req, res) => {
         res.status(404).send("File not found on FIXR storage");
     }
 });
-
 app.get('/api/hello', (req, res) => {
     res.status(200).json({ success: true, message: "Fixr Backend Live" });
 });
