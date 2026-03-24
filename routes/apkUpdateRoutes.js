@@ -5,7 +5,7 @@ const apkUpdateController = require('../controllers/apkUpdateController');
 
 // 1. Define the absolute path to your updates folder
 // Since this file is in /routes, we go up one level to /backend/updates
-const updatesFolder = path.join(__dirname, '../updates');
+const updatesFolder = path.join(__dirname, '../../updates');
 
 // 2. Serve the static bundle file
 // This makes index.android.bundle available at: your-tunnel-url/api/updates/index.android.bundle
