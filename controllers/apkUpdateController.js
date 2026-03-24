@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const updatesFolder = path.join(__dirname, '../updates');
+const updatesFolder = path.join(__dirname, '../../updates');
 
 exports.getManifest = (req, res) => {
     try {
