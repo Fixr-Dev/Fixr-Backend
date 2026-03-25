@@ -9,60 +9,45 @@ const updatesFolder = path.join(process.cwd(),'..', 'updates');
 exports.getManifest = (req, res) => {
     try {
         const bundlePath = path.join(updatesFolder, 'index.android.bundle');
-        console.log("Checking for bundle at:", bundlePath);
-        
-        if (!fs.existsSync(bundlePath)) {
-        return res.status(404).json({ 
-            error: "No bundle found",
-            attemptedPath: bundlePath // Useful for one-time debugging
-        });
-    }
+        if (!fs.existsSync(bundlePath)) return res.status(404).json({ error: "No bundle found" });
 
         const fileBuffer = fs.readFileSync(bundlePath);
-        
-        // Generate Expo-compliant Hash
+        const stats = fs.statSync(bundlePath);
+
+        // 1. Generate the SHA-256 Hash (Required for integrity)
         const hash = crypto.createHash('sha256')
             .update(fileBuffer)
             .digest('base64')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, ''); 
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); 
 
-        // Generate Stable ID
-        const fileContentHash = crypto.createHash('md5').update(fileBuffer).digest('hex');
-        const stableId = `${fileContentHash.slice(0, 8)}-${fileContentHash.slice(8, 12)}-4${fileContentHash.slice(12, 15)}-a${fileContentHash.slice(16, 19)}-${fileContentHash.slice(20, 32)}`;
-
-        const stats = fs.statSync(bundlePath);
-        const fileTimestamp = stats.mtime.toISOString();
-
-        // Headers to prevent caching and bypass ngrok warnings
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-        res.setHeader('expo-protocol-version', '0');
-        res.setHeader('expo-sfv-version', '0');
-        res.setHeader('content-type', 'application/json');
-        res.setHeader('ngrok-skip-browser-warning', 'true');
-        res.removeHeader('ETag');
+        // 2. Generate a TRULY Unique Update ID 
+        // We use the file mtime + size to ensure that if the file changes, the ID changes.
+        const updateIdentifier = crypto.createHash('md5')
+            .update(fileBuffer)
+            .update(stats.mtime.toString()) 
+            .digest('hex');
 
         res.json({
-            id: stableId,
-            createdAt: fileTimestamp, 
+            id: updateIdentifier, // Changed to be strictly tied to this specific file version
+            createdAt: stats.mtime.toISOString(), 
             runtimeVersion: req.headers['expo-runtime-version'] || "1.0.0",
             launchAsset: {
                 hash: hash,
-                key: "bundle",
+                key: `bundle-${updateIdentifier.slice(0, 8)}`, // UNIQUE KEY per version
                 contentType: "application/javascript",
-                url: `${process.env.BASE_URL}/api/apk/updates/index.android.bundle`
+                url: `${req.protocol}://${req.get('host')}/api/updates/index.android.bundle?v=${updateIdentifier}` // Cache busting URL
             },
             assets: [],
-            metadata: { branchName: "main", bundleUpdateId: stableId }
+            metadata: { 
+                branchName: "main", 
+                bundleUpdateId: updateIdentifier 
+            }
         });
 
     } catch (error) {
-        console.error("Manifest Error:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
-
 exports.debugOta = (req, res) => {
     res.json({
         searchingIn: updatesFolder,
