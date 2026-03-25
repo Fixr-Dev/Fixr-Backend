@@ -49,7 +49,7 @@ exports.getManifest = (req, res) => {
             runtimeVersion: req.headers['expo-runtime-version'] || "1.0.0",
             launchAsset: {
                 hash: hash,
-                key: "bundle",
+                key: hash,
                 contentType: "application/javascript",
                 url: `${process.env.BASE_URL}/api/apk/updates/index.android.bundle`
             },
