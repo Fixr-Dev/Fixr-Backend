@@ -4,6 +4,8 @@ const crypto = require('crypto');
 
 const updatesFolder = path.join(process.cwd(),'..', 'updates');
 
+
+
 exports.getManifest = (req, res) => {
     try {
         const bundlePath = path.join(updatesFolder, 'index.android.bundle');
