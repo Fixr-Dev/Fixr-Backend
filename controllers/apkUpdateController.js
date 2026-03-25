@@ -49,7 +49,7 @@ exports.getManifest = (req, res) => {
                 hash: hash,
                 key: "bundle",
                 contentType: "application/javascript",
-                url: `${req.protocol}://${req.get('host')}/api/apk/updates/index.android.bundle`
+                url: `${process.env.BASE_URL}/api/apk/updates/index.android.bundle`
             },
             assets: [],
             metadata: { branchName: "main", bundleUpdateId: stableId }
