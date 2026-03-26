@@ -3,24 +3,20 @@ const fs = require('fs');
 const crypto = require('crypto');
 
 const updatesFolder = path.join(process.cwd(),'..', 'updates');
-
+const PRIVATE_KEY_PATH = path.join(__dirname, '../private-key.pem');
 
 
 exports.getManifest = (req, res) => {
     try {
         const bundlePath = path.join(updatesFolder, 'index.android.bundle');
-        console.log("Checking for bundle at:", bundlePath);
         
         if (!fs.existsSync(bundlePath)) {
-        return res.status(404).json({ 
-            error: "No bundle found",
-            attemptedPath: bundlePath // Useful for one-time debugging
-        });
-    }
+            return res.status(404).json({ error: "No bundle found" });
+        }
 
         const fileBuffer = fs.readFileSync(bundlePath);
         
-        // Generate Expo-compliant Hash
+        // Generate Expo-compliant Asset Hash (SHA-256 Base64URL)
         const hash = crypto.createHash('sha256')
             .update(fileBuffer)
             .digest('base64')
@@ -35,18 +31,11 @@ exports.getManifest = (req, res) => {
         const stats = fs.statSync(bundlePath);
         const fileTimestamp = stats.mtime.toISOString();
 
-        // Headers to prevent caching and bypass ngrok warnings
-        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-        res.setHeader('expo-protocol-version', '0');
-        res.setHeader('expo-sfv-version', '0');
-        res.setHeader('content-type', 'application/json');
-        res.setHeader('ngrok-skip-browser-warning', 'true');
-        res.removeHeader('ETag');
-
-        res.json({
+        // 2. Define the Manifest Object
+        const manifest = {
             id: stableId,
             createdAt: fileTimestamp, 
-            runtimeVersion: req.headers['expo-runtime-version'] || "1.0.0",
+            runtimeVersion: "1.0.0",
             launchAsset: {
                 hash: hash,
                 key: hash,
@@ -55,20 +44,45 @@ exports.getManifest = (req, res) => {
             },
             assets: [],
             metadata: { 
-                branchName: "main", 
-                bundleUpdateId: stableId,
+                branchName: "main"
             },
-            extra:{
-                expoConfig:{
+            extra: {
+                expoConfig: {
                     name: "Fixr",
                     slug: "fixr",
-                    version: "1.0.x", // Your test value
-                    runtimeVersion:"1.0.0",
-                    sdkVersion: "54.0.0" // Matches your log
+                    version: "1.0.x", 
+                    runtimeVersion: "1.0.0",
+                    sdkVersion: "54.0.0"
                 }
-            },
-            isVerified:true
-    });
+            }
+        };
+
+        const manifestString = JSON.stringify(manifest);
+
+        // 3. SIGN THE MANIFEST (The magic part)
+        let signature = "";
+        if (fs.existsSync(PRIVATE_KEY_PATH)) {
+            const privateKey = fs.readFileSync(PRIVATE_KEY_PATH, 'utf8');
+            const sign = crypto.createSign('RSA-SHA256');
+            sign.update(manifestString);
+            // Sign and format for the Expo-Signature header
+            signature = sign.sign(privateKey, 'base64');
+        }
+
+        // 4. Set Headers
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        res.setHeader('expo-protocol-version', '1'); // Protocol 1 for signing/extra
+        res.setHeader('expo-sfv-version', '0');
+        res.setHeader('content-type', 'application/json');
+        res.setHeader('ngrok-skip-browser-warning', 'true');
+        
+        // Add the Signature Header (keyid must match what's in app.config.js)
+        if (signature) {
+            res.setHeader('expo-signature', `sig="${signature}"; keyid="main"`);
+        }
+
+        // 5. Send the RAW string (Important: do not re-stringify or it breaks the signature)
+        res.send(manifestString);
 
     } catch (error) {
         console.error("Manifest Error:", error);
