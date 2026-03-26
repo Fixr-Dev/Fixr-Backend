@@ -37,7 +37,7 @@ exports.getManifest = (req, res) => {
 
         // Headers to prevent caching and bypass ngrok warnings
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-        res.setHeader('expo-protocol-version', '1');
+        res.setHeader('expo-protocol-version', '0');
         res.setHeader('expo-sfv-version', '0');
         res.setHeader('content-type', 'application/json');
         res.setHeader('ngrok-skip-browser-warning', 'true');
