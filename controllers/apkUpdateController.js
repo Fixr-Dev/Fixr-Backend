@@ -2,24 +2,36 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const updatesFolder = path.join(process.cwd(),'..', 'updates');
-const PRIVATE_KEY_PATH = path.join(__dirname, '../private-key.pem');
-
+const updatesFolder = path.join(process.cwd(), '..', 'updates');
 
 exports.getManifest = (req, res) => {
     try {
         const bundlePath = path.join(updatesFolder, 'index.android.bundle');
+        const versionPath = path.join(updatesFolder, 'version.json'); // --- ADDED: Path to version file ---
+
         console.log("Checking for bundle at:", bundlePath);
         
         if (!fs.existsSync(bundlePath)) {
-        return res.status(404).json({ 
-            error: "No bundle found",
-            attemptedPath: bundlePath // Useful for one-time debugging
-        });
-    }
+            return res.status(404).json({ 
+                error: "No bundle found",
+                attemptedPath: bundlePath 
+            });
+        }
+
+        // --- START: VERSION LOGIC ---
+        let currentVersion = "1.0.0"; // Fallback
+        if (fs.existsSync(versionPath)) {
+            try {
+                const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+                currentVersion = versionData.version;
+                console.log("✅ Serving version:", currentVersion);
+            } catch (e) {
+                console.error("❌ Failed to parse version.json, using fallback.");
+            }
+        }
+        // --- END: VERSION LOGIC ---
 
         const fileBuffer = fs.readFileSync(bundlePath);
-        const sign =crypto.createSign('RSA-SHA256')
         
         // Generate Expo-compliant Hash
         const hash = crypto.createHash('sha256')
@@ -36,14 +48,16 @@ exports.getManifest = (req, res) => {
         const stats = fs.statSync(bundlePath);
         const fileTimestamp = stats.mtime.toISOString();
 
-        // Headers to prevent caching and bypass ngrok warnings
+        // Headers
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-        res.setHeader('expo-protocol-version', '0');
+        res.setHeader('expo-protocol-version', '1'); // --- UPDATED: Use '1' for SDK 54 ---
         res.setHeader('expo-sfv-version', '0');
         res.setHeader('content-type', 'application/json');
         res.setHeader('ngrok-skip-browser-warning', 'true');
         res.removeHeader('ETag');
 
+        // Note: Using res.json() works fine here since you aren't strictly 
+        // enforcing RSA signing yet. If you use RSA, change this to res.send(JSON.stringify(data))
         res.json({
             id: stableId,
             createdAt: fileTimestamp, 
@@ -63,19 +77,19 @@ exports.getManifest = (req, res) => {
                 expoConfig:{
                     name: "Fixr",
                     slug: "fixr",
-                    version: "1.0.x", // Your test value
-                    runtimeVersion:"1.0.0",
-                    sdkVersion: "54.0.0" // Matches your log
+                    version: currentVersion, // --- UPDATED: Now dynamic ---
+                    runtimeVersion: "1.0.0",
+                    sdkVersion: "54.0.0"
                 }
-            },
-            isVerified:true
-    });
+            }
+        });
 
     } catch (error) {
         console.error("Manifest Error:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+
 
 exports.debugOta = (req, res) => {
     res.json({
