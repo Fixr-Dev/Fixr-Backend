@@ -54,15 +54,20 @@ exports.getManifest = (req, res) => {
                 url: `${process.env.BASE_URL}/api/apk/updates/index.android.bundle`
             },
             assets: [],
-            metadata: { branchName: "main", bundleUpdateId: stableId,expoConfig:{
+            metadata: { 
+                branchName: "main", 
+                bundleUpdateId: stableId,
+            },
+            extra:{
+                expoConfig:{
                     name: "Fixr",
                     slug: "fixr",
                     version: "1.0.x", // Your test value
-                    extra: {
-                        testKey: "OTA-Success"
-                    }}  
+                    runtimeVersion:"1.0.0",
+                    sdkVersion: "54.0.0" // Matches your log
                 }
-        });
+            }
+    });
 
     } catch (error) {
         console.error("Manifest Error:", error);
