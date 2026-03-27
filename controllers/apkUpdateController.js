@@ -53,7 +53,7 @@ exports.getManifest = (req, res) => {
 
         const stats = fs.statSync(bundlePath);
         const fileTimestamp = stats.mtime.toISOString();
-        const versionArray = pkg?.currentVersion?.split('.');
+        const versionArray = currentVersion?.split('.');
 
         // Headers
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
