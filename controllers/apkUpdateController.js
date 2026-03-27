@@ -53,6 +53,7 @@ exports.getManifest = (req, res) => {
 
         const stats = fs.statSync(bundlePath);
         const fileTimestamp = stats.mtime.toISOString();
+        const versionArray = pkg?.currentVersion?.split('.');
 
         // Headers
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -84,7 +85,7 @@ exports.getManifest = (req, res) => {
                     name: "Fixr",
                     slug: "fixr",
                     version: currentVersion, // --- UPDATED: Now dynamic ---
-                    runtimeVersion: "1.0.0",
+                    runtimeVersion: `runtime-${versionArray[0]}`,
                     sdkVersion: "54.0.0"
                 }
             }
