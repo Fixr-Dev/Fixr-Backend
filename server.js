@@ -48,7 +48,7 @@ app.use((req, res, next) => {
 
 // --- ROUTES ---
 app.use('/auth', authRoutes);
-app.use('/apk', apkUpdateRoutes);
+app.use('/api/apk', apkUpdateRoutes);
 app.use('/location', locationRoutes);
 app.get('/fixr-uploads/uploads/:filename', async (req, res) => {
     try {
