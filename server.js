@@ -47,9 +47,9 @@ app.use((req, res, next) => {
 });
 
 // --- ROUTES ---
-app.use('/api/auth', authRoutes);
-app.use('/api/apk', apkUpdateRoutes);
-app.use('/api/location', locationRoutes);
+app.use('/auth', authRoutes);
+app.use('/apk', apkUpdateRoutes);
+app.use('/location', locationRoutes);
 app.get('/fixr-uploads/uploads/:filename', async (req, res) => {
     try {
         const { filename } = req.params;
@@ -72,7 +72,7 @@ app.get('/fixr-uploads/uploads/:filename', async (req, res) => {
         res.status(404).send("File not found on FIXR storage");
     }
 });
-app.get('/api/hello', (req, res) => {
+app.get('/hello', (req, res) => {
     res.status(200).json({ success: true, message: "Fixr Backend Live" });
 });
 
