@@ -27,7 +27,7 @@ router.get('/download-apk', (req, res) => {
     try {
         // Read the directory to find the APK file
         const files = fs.readdirSync(apkFolder);
-        const apkFile = files.find(file => file.endsWith('.apk'));
+        const apkFile = files.filter(file => file.endsWith('.apk')).map(name => ({ name, time: fs.statSync(path.join(apkFolder, name)).mtime.getTime() })).sort((a, b) => b.time - a.time)[0]?.name;
 
         if (!apkFile) {
             return res.status(404).json({ error: "No .apk file found in the storage folder." });
