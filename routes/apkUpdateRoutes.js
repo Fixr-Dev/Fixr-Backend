@@ -25,9 +25,17 @@ router.use('/updates', express.static(updatesFolder, {
  */
 router.get('/download-apk', (req, res) => {
     try {
-        // Read the directory to find the APK file
+        // Read the directory to find the latest APK file
         const files = fs.readdirSync(apkFolder);
-        const apkFile = files.filter(file => file.endsWith('.apk')).map(name => ({ name, time: fs.statSync(path.join(apkFolder, name)).mtime.getTime() })).sort((a, b) => b.time - a.time)[0]?.name;
+        const apkFiles = files
+            .filter(file => file.endsWith('.apk'))
+            .map(name => ({ 
+                name, 
+                time: fs.statSync(path.join(apkFolder, name)).mtime.getTime() 
+            }))
+            .sort((a, b) => b.time - a.time);
+
+        const apkFile = apkFiles[0]?.name;
 
         if (!apkFile) {
             return res.status(404).json({ error: "No .apk file found in the storage folder." });
@@ -35,8 +43,14 @@ router.get('/download-apk', (req, res) => {
 
         const filePath = path.join(apkFolder, apkFile);
 
-        // Serve the file
+        // --- NGROK BYPASS ---
+        // This is the key header. We set it before anything else.
         res.setHeader('ngrok-skip-browser-warning', 'true');
+        
+        // Optional: Ensure the browser knows it's an Android app
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+
+        // Serve the file
         res.download(filePath, apkFile, (err) => {
             if (err) {
                 console.error("Error during download:", err);
