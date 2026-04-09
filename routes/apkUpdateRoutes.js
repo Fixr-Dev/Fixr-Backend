@@ -36,6 +36,7 @@ router.get('/download-apk', (req, res) => {
         const filePath = path.join(apkFolder, apkFile);
 
         // Serve the file
+        res.setHeader('ngrok-skip-browser-warning', 'true');
         res.download(filePath, apkFile, (err) => {
             if (err) {
                 console.error("Error during download:", err);
