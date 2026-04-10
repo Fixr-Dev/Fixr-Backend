@@ -27,15 +27,6 @@ jobs:
 
       - name: Rebuild Backend
         run: |
-          # Use the explicit project name to prevent "empty project name" errors
-          # and target only the fixr-backend service
           docker-compose -p electrolyte-solutions -f "F:\docker-compose.yml" --project-directory "F:\" up --build --force-recreate -d fixr-backend
-
-          # Optional: Wait 5 seconds for the container to initialize
-          timeout /t 5 /nobreak > NUL
-
-          # Check if the container stayed up or crashed
-          docker ps --filter "name=fixr-backend"
-
-          # Clean up dangling images to keep the F: drive lean
+          
           docker image prune -f
