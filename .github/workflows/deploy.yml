@@ -28,7 +28,7 @@ jobs:
       - name: Rebuild Backend
         run: |
           # Now that the fixles on F: are fresh, we trigger the build
-          docker-compose -f "F:\docker-compose.yml" --project-directory "F:\" up --build -d fixr-backend
+          docker-compose -f "F:\docker-compose.yml" --project-directory "F:\" up --build -d electrolyte-solutions-fixr-backend
           
           # Clean up dangling images to keep the F: drive lean
           docker image prune -f
