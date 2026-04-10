@@ -25,9 +25,9 @@ router.use('/updates', express.static(updatesFolder, {
  */
 router.get('/download-apk', (req, res) => {
     try {
+        console.log("FOLDER",apkFolder)
         // Read the directory to find the latest APK file
         const files = fs.readdirSync(apkFolder);
-        console.log("FILES",files)
         const apkFiles = files
             .filter(file => file.endsWith('.apk'))
             .map(name => ({ 
