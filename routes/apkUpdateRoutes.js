@@ -27,6 +27,7 @@ router.get('/download-apk', (req, res) => {
     try {
         // Read the directory to find the latest APK file
         const files = fs.readdirSync(apkFolder);
+        console.log("FILES",files)
         const apkFiles = files
             .filter(file => file.endsWith('.apk'))
             .map(name => ({ 
