@@ -33,7 +33,7 @@ exports.getManifest = (req, res) => {
             console.log("📝 Raw File Content was:", fs.readFileSync(versionPath, 'utf8'));
             }
         } else {
-            console.error("❌ version.json is MISSING from", versionPath);
+            console.error("❌ version.json is MISSING frsom", versionPath);
         }
         // --- END: VERSION LOGIC ---
 
