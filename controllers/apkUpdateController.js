@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const updatesFolder = path.join(process.cwd(), '..', 'bundle');
+const updatesFolder = path.join(process.cwd(), '..', 'updates');
 
 exports.getManifest = (req, res) => {
     console.log("Files in Updates Folder:", fs.readdirSync(updatesFolder))

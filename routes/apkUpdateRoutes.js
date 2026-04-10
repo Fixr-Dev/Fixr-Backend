@@ -5,9 +5,9 @@ const fs = require('fs'); // Added for file checking
 const apkUpdateController = require('../controllers/apkUpdateController');
 
 // 1. Define paths
-const updatesFolder = path.join(__dirname, '../../bundle');
+const updatesFolder = path.join(__dirname, '../../updates');
 // Assuming your APK is stored in a folder called 'bin' or 'builds'
-const apkFolder = path.join(__dirname, '../../apks'); 
+const apkFolder = path.join(__dirname, '../../updates/apks'); 
 
 // 2. Serve static bundle (OTA)
 router.use('/updates', express.static(updatesFolder, {
@@ -25,8 +25,9 @@ router.use('/updates', express.static(updatesFolder, {
  */
 router.get('/download-apk', (req, res) => {
     try {
-        console.log("FOLDER",apkFolder)
         // Read the directory to find the latest APK file
+        console.log("BUNDLE",updatesFolder)
+        console.log("APK",apkFolder)
         const files = fs.readdirSync(apkFolder);
         const apkFiles = files
             .filter(file => file.endsWith('.apk'))
