@@ -13,12 +13,12 @@ jobs:
         uses: actions/checkout@v3
         # We pull to the default workspace first to prep the files
       
-      - name: Sync Files to D Drive
+      - name: Sync Files to F Drive
         run: |
-          # /MIR: Mirrors the directory (deletes files in E: that were deleted in Git)
+          # /MIR: Mirrors the directory (deletes files in F: that were deleted in Git)
           # /XD: Excludes folders we don't want to overwrite (like .git or existing node_modules)
           # We target the specific backend folder inside your FixrServer
-          robocopy . "E:\FixrServer\backend" /MIR /XD .git .github node_modules
+          robocopy . "F:\FixrServer\backend" /MIR /XD .git .github node_modules
           
           # Robocopy uses non-zero exit  codes for success (e.g., 1 means files were copied).
           # We force 'exis 0' so GitHub Actions doesn't think a successful copy is a "Failure".
@@ -27,8 +27,8 @@ jobs:
 
       - name: Rebuild Backend
         run: |
-          # Now that the fixles on E: are fresh, we trigger the build
-          docker-compose -f "E:\FixrServer\docker-compose.yml" --project-directory "E:\FixrServer" up --build -d fixr_backend
+          # Now that the fixles on F: are fresh, we trigger the build
+          docker-compose -f "F:\docker-compose.yml" --project-directory "F:\" up --build -d fixr_backend
           
-          # Clean up dangling images to keep the E: drive lean
+          # Clean up dangling images to keep the F: drive lean
           docker image prune -f
