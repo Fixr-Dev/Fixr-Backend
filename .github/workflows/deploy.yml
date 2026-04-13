@@ -15,7 +15,7 @@ jobs:
       
       - name: Sync Files to F Drive
         run: |
-          # /MIR: Mirrors the directory (deletes files in F: that were deleted in Git)
+          # /MIR: Mirrors the diresctory (deletes files in F: that were deleted in Git)
           # /XD: Excludes folders we don't want to overwrite (like .git or existing node_modules)
           # We target the specific backend folder inside your FixrServer
           robocopy . "F:\FixrServer\backend" /MIR /XD .git .github node_modules
