@@ -1,84 +1,160 @@
+// const express = require('express');
+// const dotenv = require('dotenv');
+// const cors = require('cors');
+// const path = require('path');
+// const Minio = require('minio');
+// const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3"); // Import both here
+// const connectDB = require('./utils/db.js');
+// const authRoutes = require('./routes/authRoutes.js');
+// const locationRoutes = require('./routes/locationRoutes.js');
+// const apkUpdateRoutes = require('./routes/apkUpdateRoutes.js');
+// const { default: mongoose } = require('mongoose');
+
+// dotenv.config();
+// const app = express();
+// const PORT = process.env.PORT || 8080;
+
+
+
+// // // --- MINIO CONFIGURATION (Legacy Client) ---
+// // const minioClient = new Minio.Client({
+// //     endPoint: process.env.MINIO_ENDPOINT, 
+// //     port: parseInt(process.env.MINIO_PORT) || 9000,
+// //     useSSL: process.env.MINIO_USE_SSL === 'true',
+// //     accessKey: process.env.MINIO_ACCESS_KEY,
+// //     secretKey: process.env.MINIO_SECRET_KEY,
+// // });
+
+// // // --- S3 SDK CONFIGURATION (For Upload/View) ---
+// // // Ensure MINIO_ENDPOINT in .env is "http://192.168.1.9:9000"
+// // const s3Client = new S3Client({
+// //   region: "us-east-1",
+// //   endpoint: `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}`, 
+// //   credentials: {
+// //     accessKeyId: process.env.MINIO_ACCESS_KEY,
+// //     secretAccessKey: process.env.MINIO_SECRET_KEY, // FIXED: Removed 'C' from SCECRET
+// //   },
+// //   forcePathStyle: true,
+// // });
+
+// // Middleware
+// app.use(cors());
+// app.use(express.json());
+
+// // Request Logger
+// app.use((req, res, next) => {
+//     console.log(`${req.method} ${req.url} - ${new Date().toLocaleTimeString()}`);
+//     next();
+// });
+
+// // --- ROUTES ---
+// app.use('/auth', authRoutes);
+// app.use('/apk', apkUpdateRoutes);
+// app.use('/location', locationRoutes);
+// // app.get('/fixr-uploads/uploads/:filename', async (req, res) => {
+// //     try {
+// //         const { filename } = req.params;
+// //         const bucketName = 'fixr-uploads';
+// //         const fileKey = `uploads/${filename}`;
+
+// //         const command = new GetObjectCommand({
+// //             Bucket: bucketName,
+// //             Key: fileKey,
+// //         });
+
+// //         const response = await s3Client.send(command);
+
+// //         // Set headers and pipe stream
+// //         res.setHeader('Content-Type', response.ContentType || 'image/png');
+// //         response.Body.pipe(res);
+
+// //     } catch (error) {
+// //         console.error("❌ View Error:", error.message);
+// //         res.status(404).send("File not found on FIXR storage");
+// //     }
+// // });
+// app.get('/hello', (req, res) => {
+//     res.status(200).json({ success: true, message: "Fixr Backend Live" });
+// });
+
+// // --- WARNING: DELETE THIS AFTER DEBUGGING ---
+// app.get('/api/debug-db', (req, res) => {
+//   const states = {
+//     0: 'disconnected',
+//     1: 'connected',
+//     2: 'connecting',
+//     3: 'disconnecting'
+//   };
+
+//   const connectionState = states[mongoose.connection.readyState] || 'unknown';
+
+//   res.status(200).json({
+//     mongooseState: connectionState,
+//     rawReadyState: mongoose.connection.readyState,
+//     envMongoUri: process.env.MONGO_URI || "❌ NOT FOUND (Undefined)",
+//     nodeEnv: process.env.NODE_ENV || "not set",
+//     timestamp: new Date().toISOString()
+//   });
+// });
+
+// // Global Error Handler
+// app.use((err, req, res, next) => {
+//     console.error(err.stack);
+//     res.status(500).json({ message: err.message });
+// });
+
+// // Start Server
+// app.listen(PORT, '0.0.0.0', async () => {
+//     console.log(`🚀 Production Server running on port ${PORT}`);
+//     await connectDB();
+
+//     // minioClient.listBuckets((err, buckets) => {
+//     //     if (err) {
+//     //         console.error("❌ MinIO Connection Error:", err.message);
+//     //     } else {
+//     //         console.log(`✅ MinIO Connected. Found ${buckets.length} buckets.`);
+//     //     }
+//     // });
+// });
+
 const express = require('express');
-const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
-const Minio = require('minio');
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3"); // Import both here
-const connectDB = require('./utils/db.js');
-const authRoutes = require('./routes/authRoutes.js');
-const locationRoutes = require('./routes/locationRoutes.js');
-const apkUpdateRoutes = require('./routes/apkUpdateRoutes.js');
-const { default: mongoose } = require('mongoose');
+require('dotenv').config();
 
-dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 8080;
-
-
-
-// // --- MINIO CONFIGURATION (Legacy Client) ---
-// const minioClient = new Minio.Client({
-//     endPoint: process.env.MINIO_ENDPOINT, 
-//     port: parseInt(process.env.MINIO_PORT) || 9000,
-//     useSSL: process.env.MINIO_USE_SSL === 'true',
-//     accessKey: process.env.MINIO_ACCESS_KEY,
-//     secretKey: process.env.MINIO_SECRET_KEY,
-// });
-
-// // --- S3 SDK CONFIGURATION (For Upload/View) ---
-// // Ensure MINIO_ENDPOINT in .env is "http://192.168.1.9:9000"
-// const s3Client = new S3Client({
-//   region: "us-east-1",
-//   endpoint: `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}`, 
-//   credentials: {
-//     accessKeyId: process.env.MINIO_ACCESS_KEY,
-//     secretAccessKey: process.env.MINIO_SECRET_KEY, // FIXED: Removed 'C' from SCECRET
-//   },
-//   forcePathStyle: true,
-// });
-
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Request Logger
-app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url} - ${new Date().toLocaleTimeString()}`);
-    next();
-});
+const DB_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/inventory';
 
-// --- ROUTES ---
-app.use('/auth', authRoutes);
-app.use('/apk', apkUpdateRoutes);
-app.use('/location', locationRoutes);
-// app.get('/fixr-uploads/uploads/:filename', async (req, res) => {
-//     try {
-//         const { filename } = req.params;
-//         const bucketName = 'fixr-uploads';
-//         const fileKey = `uploads/${filename}`;
+// Cache the connection globally for Serverless
+let isConnected = false; 
 
-//         const command = new GetObjectCommand({
-//             Bucket: bucketName,
-//             Key: fileKey,
-//         });
+async function connectDB() {
+  if (isConnected) {
+    console.log('=> Using existing database connection');
+    return;
+  }
 
-//         const response = await s3Client.send(command);
+  console.log('=> Creating new database connection');
+  const db = await mongoose.connect(DB_URI, {
+    bufferCommands: false, // Prevents hanging commands if connection drops
+  });
+  
+  isConnected = db.connections[0].readyState === 1;
+  console.log('=> Database connected successfully');
+}
 
-//         // Set headers and pipe stream
-//         res.setHeader('Content-Type', response.ContentType || 'image/png');
-//         response.Body.pipe(res);
+// --- UPDATED DEBUG ENDPOINT ---
+app.get('/api/debug-db', async (req, res) => {
+  try {
+    // Force the app to wait for the connection to finish before checking state
+    await connectDB();
+  } catch (error) {
+    console.error("Database connection error inside route:", error);
+  }
 
-//     } catch (error) {
-//         console.error("❌ View Error:", error.message);
-//         res.status(404).send("File not found on FIXR storage");
-//     }
-// });
-app.get('/hello', (req, res) => {
-    res.status(200).json({ success: true, message: "Fixr Backend Live" });
-});
-
-// --- WARNING: DELETE THIS AFTER DEBUGGING ---
-app.get('/api/debug-db', (req, res) => {
   const states = {
     0: 'disconnected',
     1: 'connected',
@@ -86,33 +162,13 @@ app.get('/api/debug-db', (req, res) => {
     3: 'disconnecting'
   };
 
-  const connectionState = states[mongoose.connection.readyState] || 'unknown';
-
   res.status(200).json({
-    mongooseState: connectionState,
+    mongooseState: states[mongoose.connection.readyState] || 'unknown',
     rawReadyState: mongoose.connection.readyState,
-    envMongoUri: process.env.MONGO_URI || "❌ NOT FOUND (Undefined)",
-    nodeEnv: process.env.NODE_ENV || "not set",
+    envMongoUri: process.env.MONGO_URI ? "Found (Hidden for safety)" : "❌ NOT FOUND",
     timestamp: new Date().toISOString()
   });
 });
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ message: err.message });
-});
-
-// Start Server
-app.listen(PORT, '0.0.0.0', async () => {
-    console.log(`🚀 Production Server running on port ${PORT}`);
-    await connectDB();
-
-    // minioClient.listBuckets((err, buckets) => {
-    //     if (err) {
-    //         console.error("❌ MinIO Connection Error:", err.message);
-    //     } else {
-    //         console.log(`✅ MinIO Connected. Found ${buckets.length} buckets.`);
-    //     }
-    // });
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
