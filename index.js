@@ -8,6 +8,7 @@ const connectDB = require('./utils/db.js');
 const authRoutes = require('./routes/authRoutes.js');
 const locationRoutes = require('./routes/locationRoutes.js');
 const apkUpdateRoutes = require('./routes/apkUpdateRoutes.js');
+const { default: mongoose } = require('mongoose');
 
 dotenv.config();
 const app = express();
