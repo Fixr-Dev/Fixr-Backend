@@ -119,6 +119,25 @@ app.use(express.json());
 // Database Connection (Swap with your MongoDB URI)
 const DB_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/inventory';
 
+app.get('/api/db-status', (req, res) => {
+  // mongoose.connection.readyState returns a number from 0 to 3
+  const states = {
+    0: { status: 'disconnected', code: 503 },
+    1: { status: 'connected', code: 200 },
+    2: { status: 'connecting', code: 202 },
+    3: { status: 'disconnecting', code: 503 }
+  };
+
+  const currentState = states[mongoose.connection.readyState] || { status: 'unknown', code: 500 };
+
+  // If connected, return 200 OK. If disconnected/error, return 503 Service Unavailable
+  return res.status(currentState.code).json({
+    success: mongoose.connection.readyState === 1,
+    database: currentState.status,
+    timestamp: new Date().toISOString()
+  });
+});
+
 mongoose.connect(DB_URI)
   .then(() => console.log('✅ MongoDB Connected'))
   .catch(err => console.error('❌ Connection Error:', err));
