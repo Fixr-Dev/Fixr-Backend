@@ -76,6 +76,26 @@ app.get('/hello', (req, res) => {
     res.status(200).json({ success: true, message: "Fixr Backend Live" });
 });
 
+// --- WARNING: DELETE THIS AFTER DEBUGGING ---
+app.get('/api/debug-db', (req, res) => {
+  const states = {
+    0: 'disconnected',
+    1: 'connected',
+    2: 'connecting',
+    3: 'disconnecting'
+  };
+
+  const connectionState = states[mongoose.connection.readyState] || 'unknown';
+
+  res.status(200).json({
+    mongooseState: connectionState,
+    rawReadyState: mongoose.connection.readyState,
+    envMongoUri: process.env.MONGO_URI || "❌ NOT FOUND (Undefined)",
+    nodeEnv: process.env.NODE_ENV || "not set",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Global Error Handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
