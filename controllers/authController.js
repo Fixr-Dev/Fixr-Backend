@@ -9,7 +9,8 @@ const { Upload } = require("@aws-sdk/lib-storage");
 dotenv.config()
 const { MINIO_ENDPOINT,PORT,MINIO_PORT,MINIO_ACCESS_KEY,MINIO_BUCKET,MINIO_SECRET_KEY,BASE_URL,OTP_GATEWAY_URL,JWT_EXPIRY,JWT_SECRET,NODE_ENV} =process.env
 
-const isDev = NODE_ENV === `development`
+// const isDev = NODE_ENV === `development`
+const isDev = true
 
 // --- 0. MinIO Configuration ---
 const s3Client = new S3Client({
