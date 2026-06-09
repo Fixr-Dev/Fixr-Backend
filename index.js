@@ -2,8 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
-const Minio = require('minio');
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3"); // Import both here
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3"); 
 const connectDB = require('./utils/db.js');
 const authRoutes = require('./routes/authRoutes.js');
 const locationRoutes = require('./routes/locationRoutes.js');
@@ -14,28 +13,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-
-
-// // --- MINIO CONFIGURATION (Legacy Client) ---
-// const minioClient = new Minio.Client({
-//     endPoint: process.env.MINIO_ENDPOINT, 
-//     port: parseInt(process.env.MINIO_PORT) || 9000,
-//     useSSL: process.env.MINIO_USE_SSL === 'true',
-//     accessKey: process.env.MINIO_ACCESS_KEY,
-//     secretKey: process.env.MINIO_SECRET_KEY,
-// });
-
-// // --- S3 SDK CONFIGURATION (For Upload/View) ---
-// // Ensure MINIO_ENDPOINT in .env is "http://192.168.1.9:9000"
-// const s3Client = new S3Client({
-//   region: "us-east-1",
-//   endpoint: `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}`, 
-//   credentials: {
-//     accessKeyId: process.env.MINIO_ACCESS_KEY,
-//     secretAccessKey: process.env.MINIO_SECRET_KEY, // FIXED: Removed 'C' from SCECRET
-//   },
-//   forcePathStyle: true,
-// });
+// --- FILEBASE S3 SDK CONFIGURATION (For Serving/Viewing Media) ---
+const s3Client = new S3Client({
+  region: "us-east-1", // Filebase expects us-east-1
+  endpoint: "https://s3.filebase.com", 
+  credentials: {
+    accessKeyId: process.env.FILEBASE_ACCESS_KEY,
+    secretAccessKey: process.env.FILEBASE_SECRET_KEY,
+  },
+  forcePathStyle: true, // Crucial for Filebase compatibility
+});
 
 // Middleware
 app.use(cors());
@@ -48,7 +35,6 @@ app.use((req, res, next) => {
 });
 
 // --- SERVERLESS DATABASE CONNECTION MIDDLEWARE ---
-// Enforces that Mongoose completes its handshake before hitting any route handlers
 app.use(async (req, res, next) => {
     try {
         await connectDB();
@@ -63,28 +49,31 @@ app.use(async (req, res, next) => {
 app.use('/auth', authRoutes);
 app.use('/apk', apkUpdateRoutes);
 app.use('/location', locationRoutes);
-// app.get('/fixr-uploads/uploads/:filename', async (req, res) => {
-//     try {
-//         const { filename } = req.params;
-//         const bucketName = 'fixr-uploads';
-//         const fileKey = `uploads/${filename}`;
 
-//         const command = new GetObjectCommand({
-//             Bucket: bucketName,
-//             Key: fileKey,
-//         });
+// --- MEDIA PROXY ROUTE (Serving Files directly from Filebase) ---
+app.get('/media/:filename', async (req, res) => {
+    try {
+        const { filename } = req.params;
+        const bucketName = process.env.FILEBASE_BUCKET;
+        const fileKey = filename;
 
-//         const response = await s3Client.send(command);
+        const command = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: fileKey,
+        });
 
-//         // Set headers and pipe stream
-//         res.setHeader('Content-Type', response.ContentType || 'image/png');
-//         response.Body.pipe(res);
+        const response = await s3Client.send(command);
 
-//     } catch (error) {
-//         console.error("❌ View Error:", error.message);
-//         res.status(404).send("File not found on FIXR storage");
-//     }
-// });
+        // Set content headers from metadata and pipe file payload down to the client
+        res.setHeader('Content-Type', response.ContentType || 'image/png');
+        response.Body.pipe(res);
+
+    } catch (error) {
+        console.error("❌ Filebase View Error:", error.message);
+        res.status(404).send("File not found on FIXR cloud storage");
+    }
+});
+
 app.get('/hello', (req, res) => {
     res.status(200).json({ success: true, message: "Fixr Backend Live" });
 });
@@ -123,12 +112,6 @@ app.listen(PORT, '0.0.0.0', async () => {
     } catch (err) {
         console.error("Initial connection attempt failed:", err.message);
     }
-
-    // minioClient.listBuckets((err, buckets) => {
-    //     if (err) {
-    //         console.error("❌ MinIO Connection Error:", err.message);
-    //     } else {
-    //         console.log(`✅ MinIO Connected. Found ${buckets.length} buckets.`);
-    //     }
-    // });
+    
+    console.log(`✅ Filebase S3 Client initialized on route /media/`);
 });

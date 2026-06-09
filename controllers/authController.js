@@ -7,20 +7,30 @@ const { S3Client } = require("@aws-sdk/client-s3");
 const { Upload } = require("@aws-sdk/lib-storage");
 
 dotenv.config()
-const { MINIO_ENDPOINT,PORT,MINIO_PORT,MINIO_ACCESS_KEY,MINIO_BUCKET,MINIO_SECRET_KEY,BASE_URL,OTP_GATEWAY_URL,JWT_EXPIRY,JWT_SECRET,NODE_ENV} =process.env
+const { 
+    FILEBASE_ACCESS_KEY, 
+    FILEBASE_SECRET_KEY, 
+    FILEBASE_BUCKET, 
+    PORT, 
+    BASE_URL, 
+    OTP_GATEWAY_URL, 
+    JWT_EXPIRY, 
+    JWT_SECRET, 
+    NODE_ENV 
+} = process.env
 
 // const isDev = NODE_ENV === `development`
 const isDev = true
 
-// --- 0. MinIO Configuration ---
+// --- 0. Filebase S3 Configuration ---
 const s3Client = new S3Client({
-    region: "us-east-1",
-    endpoint: `http://${MINIO_ENDPOINT}:${MINIO_PORT}`, // Ensure this matches your docker-compose service name
+    region: "us-east-1", // Filebase expects us-east-1 as a default value
+    endpoint: "https://s3.filebase.io", 
     credentials: {
-        accessKeyId: MINIO_ACCESS_KEY,
-        secretAccessKey: MINIO_SECRET_KEY,
+        accessKeyId: FILEBASE_ACCESS_KEY,
+        secretAccessKey: FILEBASE_SECRET_KEY,
     },
-    forcePathStyle: true,
+    forcePathStyle: true, // Required for Filebase compatibility
 });
 
 const otpStore = {}; 
@@ -92,8 +102,7 @@ const verifyOtp = async (req, res) => {
     }
 };
 
-// --- 3. Upload to MinIO ---
-
+// --- 3. Upload to Filebase ---
 const handleUpload = async (req, res) => {
     // 1. Check if Multer caught the file
     if (!req.file) {
@@ -104,19 +113,19 @@ const handleUpload = async (req, res) => {
     }
 
     try {
-        // 2. Create a unique key for your 10 HDD storage
+        // 2. Create a unique key for storage
         const fileExtension = req.file.originalname.split('.').pop();
-        const fileKey = `uploads/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+        const fileKey = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
         
-        console.log(`🚀 Uploading ${req.file.originalname} to MinIO as ${fileKey}...`);
+        console.log(`🚀 Uploading ${req.file.originalname} to Filebase as ${fileKey}...`);
 
         // 3. Setup the Parallel Upload
         const parallelUploads3 = new Upload({
-            client: s3Client, // Your MinIO S3 client configuration
+            client: s3Client, 
             params: { 
-                Bucket: MINIO_BUCKET, 
+                Bucket: FILEBASE_BUCKET, 
                 Key: fileKey, 
-                Body: req.file.buffer, // <--- THIS IS THE MAGIC BUFFER
+                Body: req.file.buffer, 
                 ContentType: req.file.mimetype 
             },
         });
@@ -127,10 +136,10 @@ const handleUpload = async (req, res) => {
         res.status(200).send({ success: true, key: fileKey });
 
     } catch (error) {
-        console.error("❌ MinIO Storage Error:", error);
+        console.error("❌ Filebase Storage Error:", error);
         res.status(500).send({ 
             success: false, 
-            message: "Failed to write to storage array", 
+            message: "Failed to write to cloud storage array", 
             error: error.message 
         });
     }
@@ -147,7 +156,7 @@ const getMe = async (req, res) => {
 
     // 2. Check if "technician" exists inside the role array
     const isTech = user.roles && user.roles.includes("technician");
-    let technicianProfile= {}
+    let technicianProfile = {}
 
     let completeUser = { ...user };
 
@@ -164,7 +173,7 @@ const getMe = async (req, res) => {
     // 4. Return the full "Super Object"
     res.status(200).json({ 
       success: true, 
-      user: {...completeUser,...technicianProfile} 
+      user: {...completeUser, ...technicianProfile} 
     });
 
   } catch (error) {
@@ -172,9 +181,8 @@ const getMe = async (req, res) => {
   }
 };
 
-// --- 3. Update User Profile (PUT) ---
-
-  const updateProfile = async (req, res) => {
+// --- 4. Update User Profile (PUT) ---
+const updateProfile = async (req, res) => {
     try {
       const userId = req.user.id;
       const { type, value } = req.body;
@@ -214,46 +222,44 @@ const getMe = async (req, res) => {
             updateData.isAvailable = isAvailable;
           }
 
-         
+          if (city || address || coordinates) {
+            // 1. Get existing values to prevent overwriting with nulls
+            const existingLoc = req.user.location || {};
+            const existingCoords = existingLoc.coordinates || [0.0, 0.0];
 
-        if (city || address || coordinates) {
-          // 1. Get existing values to prevent overwriting with nulls
-          const existingLoc = req.user.location || {};
-          const existingCoords = existingLoc.coordinates || [0.0, 0.0];
+            let newLng = existingCoords[0];
+            let newLat = existingCoords[1];
 
-          let newLng = existingCoords[0];
-          let newLat = existingCoords[1];
+            // 2. Handle the Payload Array: [82.185081, 27.410189]
+            if (Array.isArray(coordinates) && coordinates.length === 2) {
+              const lng = parseFloat(coordinates[0]);
+              const lat = parseFloat(coordinates[1]);
 
-          // 2. Handle the Payload Array: [82.185081, 27.410189]
-          if (Array.isArray(coordinates) && coordinates.length === 2) {
-            const lng = parseFloat(coordinates[0]);
-                    const lat = parseFloat(coordinates[1]);
+              // Only update if they are valid numbers (prevents NaN crashes)
+              if (!isNaN(lng) && !isNaN(lat)) {
+                newLng = lng;
+                newLat = lat;
+              }
+            } 
+            // Optional: Handle object format if sent from other parts of the app
+            else if (coordinates && typeof coordinates === 'object') {
+              const lat = coordinates.latitude || coordinates.lat;
+              const lng = coordinates.longitude || coordinates.lng;
+              if (!isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+                newLng = parseFloat(lng);
+                newLat = parseFloat(lat);
+              }
+            }
 
-                    // Only update if they are valid numbers (prevents NaN crashss
-                    if (!isNaN(lng) && !isNaN(lat)) {
-                      newLng = lng;
-                      newLat = lat;
-                    }
-                  } 
-                  // Optional: Handle object format if sent from other parts of the appd
-                  else if (coordinates && typeof coordinates === 'object') {
-                    const lat = coordinates.latitude || coordinates.lat;
-                    const lng = coordinates.longitude || coordinates.lng;
-                    if (!isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
-                      newLng = parseFloat(lng);
-                      newLat = parseFloat(lat);
-                    }
-                  }
-
-                  // 3. Construct the updateData according to your Schema
-                  updateData.location = {
-                    type: "Point",
-                    coordinates: [newLng, newLat], // [Longitude, Latitude]
-                    address: address !== undefined ? address.trim() : existingLoc.address,
-                    city: city !== undefined ? city.trim() : existingLoc.city
-                  };
-                }
-                  break;
+            // 3. Construct the updateData according to your Schema
+            updateData.location = {
+              type: "Point",
+              coordinates: [newLng, newLat], // [Longitude, Latitude]
+              address: address !== undefined ? address.trim() : existingLoc.address,
+              city: city !== undefined ? city.trim() : existingLoc.city
+            };
+          }
+          break;
 
         case "availability":
           updateData = { isAvailable: !!value };
@@ -282,7 +288,7 @@ const getMe = async (req, res) => {
       console.error("Update Profile Error:", error);
       res.status(500).json({ message: error.message });
     }
-  };
+};
 
 const registerTechnician = async (req, res) => {
   try {
@@ -365,9 +371,7 @@ const getAllTechnicians = async (req, res) => {
     // 5. Merge all fields and return
     pipeline.push({
       $project: {
-        // Keep everything from the User document
         user_data: "$$ROOT", 
-        // Move techDetails fields to the top level for easy access
         tech_data: "$techDetails",
         distance: 1
       }
@@ -381,12 +385,11 @@ const getAllTechnicians = async (req, res) => {
     // Flattening the response so fields aren't nested under 'user_data'
     const flattenedTechs = results.map(item => {
       const { user_data, tech_data, distance } = item;
-      // Merge User + Tech + Distance into one flat object
       return { 
         ...user_data, 
         ...tech_data, 
         distance,
-        techDetails: undefined // Clean up the raw join field
+        techDetails: undefined 
       };
     });
 
@@ -398,7 +401,6 @@ const getAllTechnicians = async (req, res) => {
 
 const getTechnicianProfile = async (req, res) => {
   try {
-    // .lean() tells Mongoose to return a plain JS object, making it faster and cleaner
     const tech = await Technician.findOne({ userId: req.params.userId }).lean();
     const user = await User.findOne({ userId: req.params.userId }).lean();
 
@@ -406,10 +408,7 @@ const getTechnicianProfile = async (req, res) => {
       return res.status(404).json({ message: "Technician profile not found" });
     }
 
-    // Merge them: tech properties will override user properties if keys collide
-    // (e.g., both have 'createdAt', tech's version will be kept)
     const profile = { ...user, ...tech };
-
     res.status(200).json(profile);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -431,10 +430,8 @@ const updateTechnician = async (req, res) => {
 
 const deleteTechnicianProfile = async (req, res) => {
   try {
-    // 1. Remove tech profile
     await Technician.findOneAndDelete({ userId: req.params.userId });
 
-    // 2. Downgrade User Role (Optional: remove 'technician' from array)
     await User.findOneAndUpdate(
       { userId: req.params.userId },
       { $pull: { roles: "technician" } }
@@ -446,6 +443,5 @@ const deleteTechnicianProfile = async (req, res) => {
   }
 };
 
-
 // EXPORT ALL FUNCTIONS
-module.exports = { requestOtp,registerTechnician,getAllTechnicians,getTechnicianProfile,getTechnicianProfile,updateTechnician,deleteTechnicianProfile, verifyOtp, getMe, updateProfile, handleUpload };
+module.exports = { requestOtp, registerTechnician, getAllTechnicians, getTechnicianProfile, updateTechnician, deleteTechnicianProfile, verifyOtp, getMe, updateProfile, handleUpload };
