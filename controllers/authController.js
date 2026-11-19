@@ -24,7 +24,7 @@ const GATEWAY_BASE_URL = (SMS_GATEWAY_URL || "https://relay.asrivastav722.worker
 const GATEWAY_API_KEY = SMS_GATEWAY_API_KEY || "my-secret-sim-key-123";
 
 // Set to false to trigger real SMS dispatch through the gateway
-const isDev = true;
+const isDev = false;
 
 // --- 0. Filebase S3 Configuration ---
 const s3Client = new S3Client({
@@ -71,7 +71,7 @@ const requestOtp = async (req, res) => {
         setTimeout(() => delete otpStore[cleanPhone], 5 * 60 * 1000);
 
         const gatewayRes = await axios.post(
-            `${GATEWAY_BASE_URL}/api/sms/send`,
+            `${GATEWAY_BASE_URL}/send`,
             {
                 phone: cleanPhone,
                 title: "Fixr",
