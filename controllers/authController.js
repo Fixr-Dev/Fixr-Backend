@@ -13,14 +13,18 @@ const {
     FILEBASE_BUCKET, 
     PORT, 
     BASE_URL, 
-    OTP_GATEWAY_URL, 
+    SMS_GATEWAY_URL,
+    SMS_GATEWAY_API_KEY,
     JWT_EXPIRY, 
     JWT_SECRET, 
     NODE_ENV 
 } = process.env
 
-// const isDev = NODE_ENV === `development`
-const isDev = true
+const GATEWAY_BASE_URL = (SMS_GATEWAY_URL || "https://relay.asrivastav722.workers.dev").replace(/\/+$/, "");
+const GATEWAY_API_KEY = SMS_GATEWAY_API_KEY || "my-secret-sim-key-123";
+
+// Set to false to trigger real SMS dispatch through the gateway
+const isDev = true;
 
 // --- 0. Filebase S3 Configuration ---
 const s3Client = new S3Client({
@@ -44,39 +48,57 @@ const requestOtp = async (req, res) => {
     }
 
     try {
+        const cleanPhone = String(phone).trim();
         // 1. Generate OTP (Hardcoded for dev, random for prod)
         const generatedOtp = isDev ? "0000" : Math.floor(1000 + Math.random() * 9000).toString();
         
         // 2. Store it so the verify-otp endpoint can see it
-        otpStore[phone] = generatedOtp;
+        otpStore[cleanPhone] = generatedOtp;
 
         // 3. Short-circuit if in Dev Mode
         if (isDev) {
-            console.log(`[DEV] OTP for ${phone}: ${generatedOtp}`);
+            console.log(`[DEV] OTP for ${cleanPhone}: ${generatedOtp}`);
             return res.status(200).json({ 
                 success: true, 
                 message: "Dev mode: Use 0000" 
             });
         }
 
-        // 4. Production Only: Send the actual SMS
+        // 4. Production: Queue SMS via Cloudflare Worker -> Android SIM Gateway
         const message = `Your Fixr OTP is: ${generatedOtp}`;
         
         // Auto-delete from memory after 5 mins
-        setTimeout(() => delete otpStore[phone], 5 * 60 * 1000);
+        setTimeout(() => delete otpStore[cleanPhone], 5 * 60 * 1000);
 
-        await axios.get(OTP_GATEWAY_URL, {
-            params: { phone, message },
-            timeout: 5000 
+        const gatewayRes = await axios.post(
+            `${GATEWAY_BASE_URL}/api/sms/send`,
+            {
+                phone: cleanPhone,
+                title: "Fixr",
+                message,
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": GATEWAY_API_KEY,
+                },
+                timeout: 7000,
+            }
+        );
+
+        return res.status(200).json({ 
+            success: true, 
+            message: "OTP queued for SIM dispatch",
+            job: gatewayRes.data?.job || null,
         });
 
-        return res.status(200).json({ success: true, message: "OTP sent" });
-
     } catch (error) {
-        console.error("SMS Gateway Error:", error.message);
+        const detail = error.response?.data?.error || error.message;
+        console.error("SMS Gateway Error:", detail);
         return res.status(500).json({ 
             success: false, 
-            message: "SMS Gateway Offline or Provider Error" 
+            message: "SMS Gateway Offline or Provider Error",
+            error: detail,
         });
     }
 };
@@ -84,17 +106,18 @@ const requestOtp = async (req, res) => {
 // --- 2. Verify OTP ---
 const verifyOtp = async (req, res) => {
     const { phone, otp, fullName } = req.body;
-    if (!otpStore[phone] || otpStore[phone] !== otp) {
+    const cleanPhone = String(phone || "").trim();
+    if (!otpStore[cleanPhone] || otpStore[cleanPhone] !== otp) {
         return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
     try {
-        let user = await User.findOne({ phone });
+        let user = await User.findOne({ phone: cleanPhone });
         if (!user) {
             if (!fullName) return res.status(400).json({ message: "Full Name required" });
-            user = await User.create({ phone, fullName, role: 'customer' });
+            user = await User.create({ phone: cleanPhone, fullName, role: 'customer' });
         }
-        delete otpStore[phone];
+        delete otpStore[cleanPhone];
         const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
         res.status(200).json({ success: true, token, user });
     } catch (error) {
